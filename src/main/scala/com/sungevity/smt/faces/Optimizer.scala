@@ -13,6 +13,10 @@ import org.apache.commons.io.FilenameUtils
 import org.apache.spark.SparkContext
 import org.slf4j.LoggerFactory
 
+/**
+  * A Spark job that searches for a best combination of parameters for the plane-growth algorithm. The job uses
+  * [[https://www.lri.fr/~hansen/cmatutorial.pdf]] algorithm to find a best match.
+  */
 object Optimizer extends Serializable {
 
   private object Log extends Serializable {
@@ -92,6 +96,10 @@ object Optimizer extends Serializable {
               x => fitFunction.apply(x)
             } collect()
           }
+
+          val bestSolution = population(argsort(scores).head, ::).inner
+
+          Log.logger.debug(s"best solution: [${bestSolution.toArray.toList}]")
 
           Log.logger.debug(s"scores: min [${min(scores)}], max [${max(scores)}], mean [${mean(scores)}], variance [${variance(scores)}], ")
 

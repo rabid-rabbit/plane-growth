@@ -6,7 +6,6 @@ import java.net.URI
 import com.sungevity.smt.faces.utils.FSUtils._
 import com.vividsolutions.jts.geom._
 import org.apache.commons.io.FilenameUtils
-import org.geotools.coverage.grid.GridCoverage2D
 import org.geotools.data.collection.ListFeatureCollection
 import org.geotools.data.shapefile.{ShapefileDataStore, ShapefileDataStoreFactory}
 import org.geotools.data.simple.{SimpleFeatureCollection, SimpleFeatureStore}
@@ -16,6 +15,7 @@ import org.geotools.feature.simple.{SimpleFeatureBuilder, SimpleFeatureTypeBuild
 import org.geotools.geojson.feature.FeatureJSON
 import org.geotools.geometry.jts.JTS
 import org.geotools.referencing.CRS
+import org.opengis.coverage.grid.GridCoverage
 import org.opengis.feature.Feature
 import org.opengis.feature.simple.{SimpleFeature, SimpleFeatureType}
 import org.opengis.filter.Filter
@@ -24,6 +24,14 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem
 import scala.collection.JavaConversions._
 import scala.util.Try
 
+/**
+  * A class that represents collection of features. The collection can be read from a GeoJSON or Shapefile, or passed
+  * as a parameter.
+  *
+  * @param crs a coordinate reference system
+  * @param geometries list
+  * @param attributes
+  */
 case class FeatureCollection(crs: CoordinateReferenceSystem, geometries: Seq[Geometry] = Seq.empty, attributes: Seq[Map[String, AnyRef]] = Seq.empty) {
 
   private val GEOM: String = "geom"
@@ -41,7 +49,13 @@ case class FeatureCollection(crs: CoordinateReferenceSystem, geometries: Seq[Geo
 
   }
 
-  def features(schema: Map[String, Class[_]]) = {
+  /**
+    * List features
+    *
+    * @param schema schema of collection
+    * @return an instance of [[SimpleFeatureCollection]]
+    */
+  def features(schema: Map[String, Class[_]]): SimpleFeatureCollection = {
     val featureType = createLocalFeatureType(crs, classOf[Polygon], "name", schema)
 
     val featureCollection = createFeatureCollection(featureType, { (builder: SimpleFeatureBuilder, geom: Geometry, attributes: Map[String, AnyRef]) =>
@@ -55,10 +69,23 @@ case class FeatureCollection(crs: CoordinateReferenceSystem, geometries: Seq[Geo
     featureCollection
   }
 
+  /**
+    * Output content of collection to a GeoJSON file
+    *
+    * @param out output stream to a file
+    * @param schema collection's schema
+    */
   def writeGeoJSON(out: OutputStream, schema: Map[String, Class[_]]): Unit ={
     new FeatureJSON().writeFeatureCollection(features(schema), out)
   }
 
+  /**
+    * Add geometries to the collection.
+    *
+    * @param polygons a sequence of new polygons to add
+    * @param attributes attributes of polygons
+    * @return
+    */
   def ++(polygons: Seq[Geometry], attributes: Seq[Map[String, AnyRef]] = Seq.empty): FeatureCollection = {
     copy(
       geometries = this.geometries ++ polygons,
@@ -66,6 +93,12 @@ case class FeatureCollection(crs: CoordinateReferenceSystem, geometries: Seq[Geo
     )
   }
 
+  /**
+    * Output content of collection to a Shapefile
+    *
+    * @param path path to the Shapefile
+    * @param schema collection's schema
+    */
   def writeShapefile(path: String, schema: Map[String, Class[_]]) = {
     val featureType = createLocalFeatureType(crs, classOf[Polygon], FilenameUtils.getName(path), schema)
 
@@ -94,7 +127,7 @@ case class FeatureCollection(crs: CoordinateReferenceSystem, geometries: Seq[Geo
     }
   }
 
-  def createFeatureCollection(featureType: SimpleFeatureType, featureSetter: (SimpleFeatureBuilder, Geometry, Map[String, AnyRef]) => Unit): SimpleFeatureCollection = {
+  private def createFeatureCollection(featureType: SimpleFeatureType, featureSetter: (SimpleFeatureBuilder, Geometry, Map[String, AnyRef]) => Unit): SimpleFeatureCollection = {
     val result = new ListFeatureCollection(featureType)
 
     val featureBuilder = new SimpleFeatureBuilder(featureType)
@@ -116,7 +149,7 @@ case class FeatureCollection(crs: CoordinateReferenceSystem, geometries: Seq[Geo
     result
   }
 
-  def writeFeatures(dataStore: DataStore, featureCollection: SimpleFeatureCollection, coordinateReferenceSystem: Option[CoordinateReferenceSystem]): Unit = {
+  private def writeFeatures(dataStore: DataStore, featureCollection: SimpleFeatureCollection, coordinateReferenceSystem: Option[CoordinateReferenceSystem]): Unit = {
     createSchema(dataStore, featureCollection.getSchema, coordinateReferenceSystem)
 
     val transaction = new DefaultTransaction("create")
@@ -137,13 +170,13 @@ case class FeatureCollection(crs: CoordinateReferenceSystem, geometries: Seq[Geo
     }
   }
 
-  def createSchema(dataStore: DataStore, featureType: SimpleFeatureType, coordinateReferenceSystem: Option[CoordinateReferenceSystem]): Unit = dataStore match {
+  private def createSchema(dataStore: DataStore, featureType: SimpleFeatureType, coordinateReferenceSystem: Option[CoordinateReferenceSystem]): Unit = dataStore match {
     case ds: ShapefileDataStore =>
       ds.createSchema(featureType)
       coordinateReferenceSystem.foreach(ds.forceSchemaCRS)
   }
 
-  def createLocalFeatureType(crs: CoordinateReferenceSystem, geometryClass: Class[_ <: Geometry], name: String, schema: Map[String, Class[_]]): SimpleFeatureType = {
+  private def createLocalFeatureType(crs: CoordinateReferenceSystem, geometryClass: Class[_ <: Geometry], name: String, schema: Map[String, Class[_]]): SimpleFeatureType = {
     require(geometryClass != null && name != null)
 
     val builder = new SimpleFeatureTypeBuilder
@@ -160,7 +193,7 @@ case class FeatureCollection(crs: CoordinateReferenceSystem, geometries: Seq[Geo
     builder.buildFeatureType
   }
 
-  def srid(crs: CoordinateReferenceSystem) = Try {
+  private def srid(crs: CoordinateReferenceSystem) = Try {
     val e = CRS.lookupEpsgCode(crs, false)
     e.intValue()
   }.getOrElse(0)
@@ -180,6 +213,13 @@ object FeatureCollection {
 
   }
 
+  /**
+    * Load collection of features from a Shapefile
+    *
+    * @param file a path to a Shapefile
+    * @param targetSrid if specified, transformation will be made to the target SRID
+    * @return a instance of [[FeatureCollection]]
+    */
   def apply(file: File, targetSrid: Option[String]): FeatureCollection = {
 
     val dataStore = new ShapefileDataStore(file.toURI().toURL())
@@ -208,6 +248,12 @@ object FeatureCollection {
 
   }
 
+  /**
+    * Load collection of features from a GeoJSON file
+    *
+    * @param source a link to a GeoJSON file
+    * @return a instance of [[FeatureCollection]]
+    */
   def apply(source: URI): FeatureCollection = {
 
     val reader = new FeatureJSON()
@@ -226,7 +272,13 @@ object FeatureCollection {
 
   }
 
-  def apply(coverage: GridCoverage2D): FeatureCollection = {
+  /**
+    * Instantiate an empty instance of [[FeatureCollection]]
+    *
+    * @param coverage an instance of [[GridCoverage]] that will be used to get coordinate reference system
+    * @return a instance of [[FeatureCollection]]
+    */
+  def apply(coverage: GridCoverage): FeatureCollection = {
 
     new FeatureCollection(coverage.getCoordinateReferenceSystem)
 

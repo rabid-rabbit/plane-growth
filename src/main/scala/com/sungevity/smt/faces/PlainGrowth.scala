@@ -26,6 +26,13 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.{immutable, mutable}
 
+/**
+  * A tool that uses plain-growth algorithm to segment roof into faces. It uses data from 3 sources:
+  * roof outlines produced by image classifier
+  * roof's raster orthogonal snapshot
+  * roof's point could snapshot
+  * @param roofPixelColor A color value of a roof on the roof outlines produced by image classifier
+  */
 class PlainGrowth(roofPixelColor: Int) extends Serializable {
 
   val up = DenseVector(0.0, 0.0, 1.0)
@@ -49,6 +56,19 @@ class PlainGrowth(roofPixelColor: Int) extends Serializable {
 
   }
 
+  /**
+    * run this tool
+    * @param input a tuple of: roof outlines produced by image classifier, roof's raster orthogonal snapshot, roof's
+    *              point could snapshot
+    * @param smoothnessThreshold smoothness threshold
+    * @param curvatureThreshold curvature threshold
+    * @param colorThreshold color threshold
+    * @param knn k nearest neighbours
+    * @param regionSizeLimit minimum size of a pixel area for the region to be considered a face
+    * @param slopeThreshold slope threshold that is used to merge similar faces
+    * @param azimuthThreshold azimuth threshold that is used to merge similar faces
+    * @return an instance of [[FeatureCollection]] with detected faces
+    */
   def segment(input: (URI, URI, URI), smoothnessThreshold: Double, curvatureThreshold: Double, colorThreshold: Double, knn: Int, regionSizeLimit: Int, slopeThreshold: Double, azimuthThreshold: Double) = {
     val (heightMap, roofOutlineMap, rasterMap) = input
 
@@ -421,6 +441,11 @@ object PlainGrowth {
     @transient lazy val logger = LoggerFactory.getLogger(PlainGrowth.getClass)
   }
 
+  /**
+    * Run plain [[PlainGrowth]] tool. Get all necessary parameters from configuration file.
+    * @param sc Spark context
+    * @param config an instance of [[Config]] from which all parameters are read
+    */
   def run()(implicit sc: SparkContext, config: Config) {
 
     val heightMapsFolder = config.getString("com.sungevity.smt.facets.input.height-maps")
@@ -496,6 +521,12 @@ object PlainGrowth {
 
   }
 
+  /**
+    * Evaluate how close result faces are to the ground thruth faces
+    * @param gold ground thruth faces
+    * @param result result faces
+    * @return a double value from 0.0 to 1.0 where zero means similar
+    */
   def evaluate(gold: Seq[Geometry], result: Seq[Geometry]): Double = {
     val m = gold.size
     val n = result.size

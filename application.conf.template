@@ -1,0 +1,72 @@
+com.sungevity.smt {
+
+  facets {
+
+    input {
+
+      roofs-outlines-path = /Users/vorl/projects/sungevity/work/test-plane-growth/in/roofs
+
+      height-maps = /Users/vorl/projects/sungevity/work/test-plane-growth/in/height_maps
+
+      raster = /Users/vorl/projects/sungevity/work/test-plane-growth/in/raster
+
+      ground-thruth = /Users/vorl/projects/sungevity/work/test-plane-growth/gold
+
+    }
+
+    threshold {
+      curvature = 0.0021506976303888137
+
+      smoothness = 0.8946964372034376
+
+      color = 3.2313377494040365
+
+      slope = 0.33
+
+      azimuth = 7.907927062958761
+
+    }
+
+    knn = 54
+
+    region-pixel-area-threshold = 76
+
+    roof-pixels-color = 16716049
+
+    output {
+
+      path = /Users/vorl/projects/sungevity/work/test-plane-growth/out
+
+      normal-maps = /Users/vorl/projects/sungevity/work/test-plane-growth/normals
+
+      curvature-maps = /Users/vorl/projects/sungevity/work/test-plane-growth/curvatures
+
+    }
+
+  }
+
+  txt2dem {
+
+    input {
+      path = /Users/vorl/projects/sungevity/work/test-plane-growth/laz
+    }
+
+    output {
+      path = /Users/vorl/projects/sungevity/work/test-plane-growth/in/height_maps
+    }
+
+  }
+
+  optimizer {
+
+    input {
+
+      sample.path = /Users/vorl/projects/sungevity/work/test-plane-growth/optimizer/samples/8
+
+      gold.path = /Users/vorl/projects/sungevity/work/test-plane-growth/optimizer/ground_thruth/8
+
+    }
+
+  }
+
+}

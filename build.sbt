@@ -1,4 +1,3 @@
-
 val geoToolsVersion = "13.2"
 
 val sparkVersion = "1.5.2"
@@ -14,6 +13,10 @@ lazy val planeGrowth = (project in file(".")).enablePlugins(JavaAppPackaging).se
   version := "1.0.0-SNAPSHOT",
 
   scalaVersion := "2.10.6",
+
+  scalacOptions += "-target:jvm-1.7",
+
+  javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
 
   resolvers += "Open Source Geospatial Foundation Repository" at "http://download.osgeo.org/webdav/geotools/",
 
@@ -37,9 +40,33 @@ lazy val planeGrowth = (project in file(".")).enablePlugins(JavaAppPackaging).se
     "org.slf4j" % "slf4j-log4j12" % slf4jVersion,
     "org.apache.spark" %% "spark-core" % sparkVersion excludeAll (ExclusionRule(organization = "org.spark-project.akka")),
     "org.apache.spark" %% "spark-mllib" % sparkVersion excludeAll (ExclusionRule(organization = "org.spark-project.akka")),
-    "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
+    "org.scalatest" %% "scalatest" % "2.2.4" % "test"
   ),
 
-  mainClass in Compile := Some("com.sungevity.smt.pg.Main")
+  assemblyMergeStrategy in assembly := {
+    case m if m.startsWith("META-INF/services/") => MergeStrategy.concat
+    case m if m.startsWith("META-INF/maven/") => MergeStrategy.discard
+    case m if m.endsWith(".DSA") => MergeStrategy.discard
+    case m if m.endsWith(".RSA") => MergeStrategy.discard
+    case m if m.endsWith(".SF") => MergeStrategy.discard
+    case m if Seq("MANIFEST.MF", "LICENSE.txt", "NOTICE.txt").exists("META-INF/" + _ == m) => MergeStrategy.discard
+    case m if m == "reference.conf" => MergeStrategy.concat
+    case _         => MergeStrategy.first
+  },
+
+  mappings in Universal <<= (mappings in Universal, assembly in Compile) map { (mappings, fatJar) =>
+    val filtered = mappings filter { case (file, name) =>  ! name.endsWith(".jar") }
+    filtered :+ (fatJar -> ("lib/" + fatJar.getName))
+  },
+
+  mappings in Universal += {
+    (baseDirectory in Compile).value / "application.conf.template" -> "conf/application.conf"
+  },
+
+
+  scriptClasspath := Seq( (assemblyJarName in assembly).value ),
+
+
+  mainClass in Compile := Some("com.sungevity.smt.faces.Main")
 
 )

@@ -14,6 +14,9 @@ import org.slf4j.LoggerFactory
 
 import scala.io.Source
 
+/**
+  * A tool for converting textual representation of point cloud data into 24 raster images.
+  */
 object Text2Dem {
 
   private object Log extends Serializable {
@@ -80,7 +83,7 @@ object Text2Dem {
 
           val xR = (width - 1) / (maxX - minX)
           val yR = (height - 1) / (maxY - minY)
-          val zR = r1
+          val zR = xR * 1000
 
           val pixels = DenseMatrix.fill[Int](width, height)(0xff000000)
 
@@ -89,7 +92,7 @@ object Text2Dem {
 
               val (x, y, z) = parseLine(line)
 
-              val c = 0xff000000 + (zR * (z - minZ)).toInt
+              val c = 0xff000000 + (zR * z).toInt
 
               val px = (math.round(xR * (x - minX))).toInt
               val py = height - (math.round(yR * (y - minY))).toInt - 1

@@ -7,12 +7,19 @@ import com.sungevity.smt.faces.utils.FSUtils._
 
 import scala.io.Source
 
+/**
+  * Class that wraps textual representation of point cloud data files.
+  * @param input link to the file
+  */
 case class CloudPoint(input: URI) {
 
   private def parseLine(line: String) = line.split(" ") match {
     case Array(x: String, y: String, z: String) => (x.toDouble, y.toDouble, z.toDouble)
   }
 
+  /**
+    * Various parameters of file
+    */
   val (width, height, minX, maxX, minY, maxY, minZ, maxZ) = {
 
     val (totalPoints, minX, maxX, minY, maxY, minZ, maxZ) = input.open {
@@ -51,6 +58,9 @@ case class CloudPoint(input: URI) {
 
   }
 
+  /**
+    * Transform cloud point data file into a matrix of doubles
+    */
   val denseMatrix: DenseMatrix[Double] = {
 
     input.open {

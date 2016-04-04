@@ -6,6 +6,12 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.util.Try
 
+/**
+  * Object-dispatcher that sets up Spark environment and calls specified command. Among available commands are:
+  * plane-growth - segment roofs using plane-growth algorithm ([[PlainGrowth]])
+  * txt2dem - convert textual representation of point cloud data into 24-bit raster images
+  * optimize - detect best parameters for the plane-growth algorithm ([[Optimizer]])
+  */
 object Main {
 
   def main(argv: Array[String]) {
@@ -35,7 +41,7 @@ object Main {
           case _ => conf
         }
     } getOrElse {
-      new SparkConf().setAppName(s"Image Classifier: ${args(0)}").setMaster("local[7]")
+      new SparkConf().setAppName(s"Image Classifier: ${args(0)}").setMaster("local[4]")
     }
 
     (sys.env.get("AWS_ACCESS_KEY_ID"), sys.env.get("AWS_SECRET_ACCESS_KEY")) match {
